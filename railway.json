@@ -3,11 +3,10 @@
   "build": {
     "builder": "nixpacks",
     "nixpacks": {
-      "pkgs": ["ffmpeg"],
-      "apt": ["ffmpeg"]
+      "pkgs": ["ffmpeg"]
     }
   },
   "deploy": {
-    "startCommand": "gunicorn --bind 0.0.0.0:\ --worker-class eventlet app:app"
+    "startCommand": "gunicorn --bind 0.0.0.0:$PORT --worker-class eventlet app:app"
   }
 }

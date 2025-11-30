@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Downloader</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="container mx-auto p-4 max-w-4xl">
+        <h1 class="text-3xl font-bold text-center mb-6">YouTube Downloader</h1>
+        <input type="url" id="urlInput" placeholder="URL YouTube..." 
+               class="w-full p-3 bg-gray-800 rounded mb-4">
+        <button onclick="getVideoInfo()" 
+                class="w-full bg-red-600 hover:bg-red-700 p-3 rounded">Analisis</button>
+        
+        <div id="videoInfo" class="mt-6 hidden">
+            <img id="thumbnail" class="w-full max-w-md mx-auto mb-4">
+            <h2 id="videoTitle"></h2>
+            <div id="formatCards" class="mt-4"></div>
+            <button id="downloadBtn" onclick="startDownload()" 
+                    class="w-full bg-green-600 hover:bg-green-700 p-3 rounded mt-4 hidden">Download</button>
+        </div>
+
+        <div id="downloadSection" class="mt-6 hidden">
+            <div class="w-full bg-gray-700 rounded-full h-4">
+                <div id="progressBar" class="bg-green-600 h-4 rounded-full" style="width: 0%"></div>
+            </div>
+            <p id="progressText" class="text-center mt-2">0% - 0MB / 0MB</p>
+        </div>
+    </div>
+
+    <script>
+        let socket = io.connect(window.location.origin);
+        let selectedFormat = null;
+
+        socket.on('progress', (data) => {
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            progressBar.style.width = data.percent + '%';
+            progressText.textContent = `${data.percent.toFixed(1)}% - ${(data.downloaded/1024/1024).toFixed(1)}MB / ${(data.total/1024/1024).toFixed(1)}MB`;
+        });
+
+        async function getVideoInfo() {
+            const url = document.getElementById('urlInput').value;
+            const response = await fetch('/api/info', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({url})
+            });
+            const data = await response.json();
+            
+            document.getElementById('thumbnail').src = data.thumbnail;
+            document.getElementById('videoTitle').textContent = data.title;
+            
+            const cards = document.getElementById('formatCards');
+            cards.innerHTML = '';
+            data.formats.slice(0,6).forEach((f, i) => {
+                const card = document.createElement('div');
+                card.className = 'bg-gray-800 p-3 rounded mb-2 cursor-pointer';
+                card.innerHTML = `<strong>${f.resolution}</strong> - ${f.ext} - ${f.size}`;
+                card.onclick = () => { selectedFormat = f; document.getElementById('downloadBtn').classList.remove('hidden'); };
+                cards.appendChild(card);
+            });
+            
+            document.getElementById('videoInfo').classList.remove('hidden');
+        }
+
+        async function startDownload() {
+            if (!selectedFormat) return;
+            document.getElementById('downloadSection').classList.remove('hidden');
+            
+            const url = document.getElementById('urlInput').value;
+            await fetch('/api/download', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({url, format: selectedFormat.id})
+            });
+        }
+    </script>
+</body>
+</html>
